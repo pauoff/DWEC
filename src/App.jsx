@@ -1,49 +1,69 @@
-import Header from "./components/Header.jsx";
-import Profile from "./components/Profile.jsx";
-import Skill from "./components/Skill.jsx";
-import Footer from "./components/Footer.jsx";
-import {useState} from "react";
-import './App.css'
-import Contact from "./components/Contact.jsx";
+import {useEffect, useState} from "react";
+import TaskList from "./components/TaskList.jsx";
+import TaskForm from "./components/TaskForm.jsx";
 
 export default function App(){
-    const skills = ["Javascript", "jQuery", "Vue", "Angular", "React", "Node.js"]
-    const [showSkills, setShowSkills] = useState(false);
-    const [showContact, setShowContact] = useState(false);
+    const [tasks, setTasks] = useState([]);
+    const[loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+
+
+    function handleAddTask(title) {
+        const cleanTitle = title.trim();
+        if (!cleanTitle) return;
+        setError("");
+
+        fetch("https://jsonplaceholder.typicode.com/todos", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                title: cleanTitle,
+                completed : false,
+                userId: 1,
+            }),
+        })
+
+            .then((res) =>{
+                if (!res.ok) throw new Error("Error creating task");
+                return res.json();
+            }).then((createdTask) => {
+                setTasks((prev) => [createdTask, ...prev]);
+        }).catch((e) =>{
+            setError(e.message);
+        });
+
+    }
+
+    useEffect(() => {
+        setLoading(true);
+        setError("");
+
+        fetch("https://jsonplaceholder.typicode.com/todos?_limit=10")
+            .then((res) => {
+                if (!res.ok) throw new Error("Error en la peticion get");
+                return res.json();
+            })
+            .then((data) => {
+                setTasks(data);
+            }).catch((e) => {
+                setError(e.message);
+        }).finally(() => {
+            setLoading(false);
+        });
+    }, []);
+
     return (
-        <>
-        <Header />
-            <main>
-                <Profile
-                name= "Pau Obrero"
-                age={18}
-                profession="Desarrollador Web"
-                />
+        <div>
+            <h1>Para hacer</h1>
+            <TaskForm onAddTask={handleAddTask}/>
 
-                <section>
-                    <h2>Habilidades</h2>
-                    <ul>
-                        <Skill text="JavaScript" />
-                        <Skill text="React" />
-                        <Skill text="Java" />
-                    </ul>
-                    <button onClick={() => setShowSkills(!showSkills)}>{showSkills ? "Ocultar skills" : "Mostrar skills"}</button>
-                    <Skill array={skills} show={showSkills} />
-                </section>
-                <br/>
-                <section>
-                    <Contact
-                        email="pauobfe@gmail.com"
-                        phone="666 666 666"
-                    show={showContact}/>
+            {loading && <p>Loading...</p>}
+            {error && <p>{error}</p>}
 
-                    <button onClick={() =>setShowContact(!showContact)}>{showContact ? "Ocultar contacto" : "Mostrar Contacto"}</button>
-                    <Contact show={showContact} />
-                </section>
-
-            </main>
-
-            <Footer />
-        </>
+            <TaskList tasks={tasks} />
+        </div>
     );
+
 }
